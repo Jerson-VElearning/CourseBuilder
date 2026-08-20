@@ -1,0 +1,35 @@
+[gd_scene load_steps=2 format=3 uid="uid://clpscxja8ekhk"]
+
+[ext_resource type="Script" uid="uid://mdr4jqn61ynx" path="res://addons/course_builder/editor/course_viewer_card.gd" id="1_script"]
+
+[node name="CourseViewerCard" type="GraphNode"]
+custom_minimum_size = Vector2(220, 80)
+title = "Slide"
+slot/0/left_enabled = true
+slot/0/left_type = 0
+slot/0/left_color = Color(0.08235294, 0.3764706, 0.50980395, 1)
+slot/0/left_icon = null
+slot/0/right_enabled = true
+slot/0/right_type = 0
+slot/0/right_color = Color(0.9137255, 0.44313726, 0.19607843, 1)
+slot/0/right_icon = null
+slot/0/draw_stylebox = true
+slot/1/left_enabled = false
+slot/1/left_type = 0
+slot/1/left_color = Color(1, 1, 1, 1)
+slot/1/left_icon = null
+slot/1/right_enabled = false
+slot/1/right_type = 0
+slot/1/right_color = Color(1, 1, 1, 1)
+slot/1/right_icon = null
+slot/1/draw_stylebox = true
+script = ExtResource("1_script")
+
+[node name="Index" type="Label" parent="."]
+layout_mode = 2
+text = "Slide 1"
+
+[node name="SlideId" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.78, 0.85, 1)
+text = "slide_id"

@@ -1,0 +1,80 @@
+[gd_scene load_steps=4 format=3 uid="uid://bwr6smhk5bitd"]
+
+[ext_resource type="Script" uid="uid://dp3stewom6j15" path="res://addons/course_builder/editor/course_viewer.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://cl7pwrnwv6tri" path="res://addons/course_builder/editor/course_viewer_graph.gd" id="2_graph"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
+bg_color = Color(0.07, 0.09, 0.12, 1)
+
+[node name="CourseViewer" type="PanelContainer" node_paths=PackedStringArray("path_edit", "refresh_button", "add_slide_button", "add_section_button", "layout_option", "status_label", "graph_edit")]
+custom_minimum_size = Vector2(0, 220)
+theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
+script = ExtResource("1_script")
+path_edit = NodePath("Margin/VBox/Header/PathEdit")
+refresh_button = NodePath("Margin/VBox/Header/Refresh")
+add_slide_button = NodePath("Margin/VBox/Header/AddSlide")
+add_section_button = NodePath("Margin/VBox/Header/AddSection")
+layout_option = NodePath("Margin/VBox/Header/Layout")
+status_label = NodePath("Margin/VBox/Header/Status")
+graph_edit = NodePath("Margin/VBox/Graph")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CourseLabel" type="Label" parent="Margin/VBox/Header"]
+layout_mode = 2
+text = "Course"
+
+[node name="PathEdit" type="LineEdit" parent="Margin/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "res://course/course.tres"
+placeholder_text = "res://course/course.tres"
+
+[node name="AddSlide" type="Button" parent="Margin/VBox/Header"]
+layout_mode = 2
+text = "Add slide"
+
+[node name="AddSection" type="Button" parent="Margin/VBox/Header"]
+layout_mode = 2
+text = "Add section"
+
+[node name="Refresh" type="Button" parent="Margin/VBox/Header"]
+layout_mode = 2
+text = "Refresh"
+
+[node name="Layout" type="OptionButton" parent="Margin/VBox/Header"]
+layout_mode = 2
+tooltip_text = "How slide nodes are arranged"
+selected = 0
+item_count = 3
+popup/item_0/text = "Horizontal"
+popup/item_0/id = 0
+popup/item_1/text = "Vertical"
+popup/item_1/id = 1
+popup/item_2/text = "Free"
+popup/item_2/id = 2
+
+[node name="Status" type="Label" parent="Margin/VBox/Header"]
+layout_mode = 2
+text = "—"
+
+[node name="Graph" type="GraphEdit" parent="Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+minimap_enabled = false
+show_zoom_label = true
+show_minimap_button = false
+script = ExtResource("2_graph")
