@@ -28,7 +28,7 @@ Course content lives **outside** the addon folder.
 |------|------|
 | `res://course/course.tres` | `IDCourseData` resource: slide order, sections, menu navigation |
 | `res://slides/` | One `.tscn` per slide; root node type **IDSlide** |
-| `res://main.tscn` | Instances the prebuilt player and assigns the course |
+| `res://main.tscn` | New inheritance scene of the prebuilt player and assigns the course |
 
 ### 1. Course resource
 
