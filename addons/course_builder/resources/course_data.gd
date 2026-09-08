@@ -4,16 +4,24 @@ extends Resource
 
 ## Ordered list of slides plus course-level menu navigation.
 ## The runtime reads this; the player does not store its own copy of progress.
-## See: runtime/course_runtime.gd, resources/slide_data.gd, resources/section_data.gd
+## See: runtime/course_runtime.gd, resources/slide_data.gd, resources/section_data.gd, resources/quiz_data.gd
+
+const _QuizDataScript := preload("res://addons/course_builder/resources/quiz_data.gd")
 
 ## How learners may open slides from the menu (can_go_to). Default Sequential.
 @export var menu_navigation: IDEnums.AccessMode = IDEnums.AccessMode.SEQUENTIAL
+
+## When the course may finish. Default matches prior behavior (reachable required slides).
+@export var completion_by: IDEnums.CourseCompletionBy = IDEnums.CourseCompletionBy.REQUIRED_SLIDES
 
 ## Flow order. Index 0 is the first slide.
 @export var slides: Array[IDSlideData] = []
 
 ## Ordered modules for Course Viewer frames and the player menu. Empty = ungrouped.
 @export var sections: Array[IDSectionData] = []
+
+## Quiz settings (pass mark, LMS reporting). Questions opt in with IDQuiz.quiz_id.
+@export var quizzes: Array[IDQuizData] = []
 
 ## Course Viewer graph layout. Editor-only; the player ignores this.
 @export_storage var viewer_layout: IDEnums.CourseViewerLayout = IDEnums.CourseViewerLayout.HORIZONTAL
@@ -81,5 +89,14 @@ func slides_in_section(section_id: String) -> Array[IDSlideData]:
 			if data.section_id.is_empty() or get_section(data.section_id) == null:
 				found.append(data)
 		elif data.section_id == section_id:
-			found.append(data)
+				found.append(data)
 	return found
+
+
+func get_quiz(quiz_id: String) -> IDQuizData:
+	if quiz_id.is_empty():
+		return null
+	for quiz in quizzes:
+		if quiz != null and quiz.quiz_id == quiz_id:
+			return quiz
+	return null

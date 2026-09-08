@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0
+
+- Multiple-choice and multiple-response slides (`IDQuiz_MC`, `IDChoice`)
+- Completion rule **Quiz**; course **Completion By** (required slides, quiz success, or both)
+- Runtime: `record_interaction`, `get_quiz_result`, `get_interaction`, `get_course_score`, and `quiz_updated`
+
 ## 0.1.0
 
 Initial public plugin release.

@@ -1,15 +1,20 @@
 extends Node
 
 ## IDCourseRuntime (autoload)
-## Owns navigation, visit/complete/reachable state, and course-level signals.
+## Owns navigation, visit/complete/reachable state, quiz results, and course-level signals.
 ## Player and IDButton call this; they do not store course progress themselves.
-## See: completion_evaluator.gd, navigation_resolver.gd, tracking/tracking_backend.gd
+## See: completion_evaluator.gd, navigation_resolver.gd, tracking/tracking_backend.gd, resources/quiz_result.gd
+
+const _QuizDataScript := preload("res://addons/course_builder/resources/quiz_data.gd")
+const _QuizResultScript := preload("res://addons/course_builder/resources/quiz_result.gd")
+const _InteractionRecordScript := preload("res://addons/course_builder/resources/interaction_record.gd")
 
 signal slide_entered(slide_id: String)
 signal slide_exited(slide_id: String)
 signal slide_completed(slide_id: String)
 signal course_completed(success: bool, score: float)
 signal navigation_blocked(reason: String)
+signal quiz_updated(quiz_id: String)
 
 var course: IDCourseData
 var current_slide_id: String = ""
@@ -23,6 +28,12 @@ var _reachable: Dictionary = {}
 var _required: Dictionary = {}
 var _history: Array[String] = []
 var _course_finished: bool = false
+## slide_id -> IDInteractionRecord (final attempt only).
+var _interactions: Dictionary = {}
+## quiz_id -> IDQuizResult
+var _quiz_results: Dictionary = {}
+## quiz_id -> Array of { slide_id, points, graded }
+var _quiz_members: Dictionary = {}
 
 var _evaluator := IDCompletionEvaluator.new()
 var _resolver := IDNavigationResolver.new()
@@ -38,11 +49,16 @@ func start_course(course_data: IDCourseData) -> void:
 	_required.clear()
 	_history.clear()
 	_course_finished = false
+	_interactions.clear()
+	_quiz_results.clear()
+	_quiz_members.clear()
 	current_slide = null
 	current_slide_id = ""
 	if course == null or course.slide_count() == 0:
 		navigation_blocked.emit("Course has no slides.")
 		return
+	_scan_quiz_membership()
+	_init_quiz_results()
 	var first_id := course.get_first_id()
 	_reachable[first_id] = true
 	_enter_slide(first_id, true)
@@ -84,7 +100,7 @@ func request_next() -> void:
 	if next_id.is_empty():
 		_try_finish_course()
 		if not _course_finished:
-			navigation_blocked.emit("Required slides are still incomplete.")
+			navigation_blocked.emit("Course is not ready to finish.")
 		return
 	_reachable[next_id] = true
 	go_to(next_id, false)
@@ -191,6 +207,64 @@ func get_progress_count() -> int:
 	return course.slide_count()
 
 
+## Final attempt only. Practice questions (empty quiz_id) are stored but not rolled into a quiz.
+func record_interaction(record: IDInteractionRecord) -> void:
+	if record == null or record.id.is_empty():
+		return
+	if _interactions.has(record.id):
+		return
+	_interactions[record.id] = record
+	_tracking.on_interaction(record)
+	if record.quiz_id.is_empty():
+		return
+	var result := _ensure_quiz_result(record.quiz_id)
+	result.replace_or_add(record)
+	_refresh_quiz_result(result)
+	quiz_updated.emit(record.quiz_id)
+	_tracking.on_objective(
+		result.quiz_id,
+		result.score_raw,
+		0.0,
+		result.score_max,
+		result.passed,
+		result.complete
+	)
+	_try_finish_course()
+
+
+func get_quiz_result(quiz_id: String) -> IDQuizResult:
+	if quiz_id.is_empty() or not _quiz_results.has(quiz_id):
+		return null
+	return _quiz_results[quiz_id]
+
+
+func get_interaction(slide_id: String) -> IDInteractionRecord:
+	if slide_id.is_empty() or not _interactions.has(slide_id):
+		return null
+	return _interactions[slide_id]
+
+
+func get_course_score() -> float:
+	if course == null:
+		return 0.0
+	var raw := 0.0
+	var max_score := 0.0
+	var any_reported := false
+	for quiz_data in course.quizzes:
+		if quiz_data == null or quiz_data.quiz_id.is_empty() or not quiz_data.report_to_lms:
+			continue
+		any_reported = true
+		var result := get_quiz_result(quiz_data.quiz_id)
+		if result == null:
+			max_score += _quiz_score_max(quiz_data.quiz_id)
+			continue
+		raw += result.score_raw
+		max_score += result.score_max
+	if not any_reported or max_score <= 0.0:
+		return 0.0
+	return (raw / max_score) * 100.0
+
+
 func _enter_slide(slide_id: String, replace_history_tail: bool) -> void:
 	if not current_slide_id.is_empty() and current_slide_id != slide_id:
 		slide_exited.emit(current_slide_id)
@@ -254,6 +328,35 @@ func _unlock_following(slide_id: String) -> void:
 func _try_finish_course() -> void:
 	if _course_finished or course == null:
 		return
+	if not _finish_requirements_met():
+		return
+	_course_finished = true
+	var success := _course_success()
+	var score := get_course_score()
+	course_completed.emit(success, score)
+	_tracking.on_course_completed(success, score)
+
+
+func _finish_requirements_met() -> bool:
+	var by := course.completion_by
+	match by:
+		IDEnums.CourseCompletionBy.QUIZ_SUCCESS:
+			return _quizzes_success_met()
+		IDEnums.CourseCompletionBy.SLIDES_AND_QUIZ:
+			return _required_slides_complete() and _quizzes_success_met()
+		_:
+			return _required_slides_complete()
+
+
+func _course_success() -> bool:
+	match course.completion_by:
+		IDEnums.CourseCompletionBy.QUIZ_SUCCESS, IDEnums.CourseCompletionBy.SLIDES_AND_QUIZ:
+			return _quizzes_success_met()
+		_:
+			return true
+
+
+func _required_slides_complete() -> bool:
 	for slide in course.slides:
 		var id: String = slide.slide_id
 		var required: bool = _required.get(id, true)
@@ -262,7 +365,157 @@ func _try_finish_course() -> void:
 		if not _reachable.has(id):
 			continue
 		if not _completed.has(id):
-			return
-	_course_finished = true
-	course_completed.emit(true, 0.0)
-	_tracking.on_course_completed(true, 0.0)
+			return false
+	return true
+
+
+func _quizzes_success_met() -> bool:
+	if course.quizzes.is_empty():
+		return false
+	var check: Array[IDQuizData] = []
+	for quiz_data in course.quizzes:
+		if quiz_data == null or quiz_data.quiz_id.is_empty():
+			continue
+		if quiz_data.required_to_pass:
+			check.append(quiz_data)
+	if check.is_empty():
+		for quiz_data in course.quizzes:
+			if quiz_data != null and not quiz_data.quiz_id.is_empty():
+				check.append(quiz_data)
+	if check.is_empty():
+		return false
+	for quiz_data in check:
+		var result := get_quiz_result(quiz_data.quiz_id)
+		if result == null or not result.complete or not result.passed:
+			return false
+	return true
+
+
+func _scan_quiz_membership() -> void:
+	_quiz_members.clear()
+	if course == null:
+		return
+	for data in course.slides:
+		if data == null or data.scene == null:
+			continue
+		var meta := _read_question_meta(data.scene)
+		var qid: String = str(meta.get("quiz_id", ""))
+		if qid.is_empty():
+			continue
+		if not _quiz_members.has(qid):
+			_quiz_members[qid] = []
+		var member_id := data.slide_id if not data.slide_id.is_empty() else str(meta.get("slide_id", ""))
+		_quiz_members[qid].append({
+			"slide_id": member_id,
+			"points": float(meta.get("points", 1.0)),
+			"graded": bool(meta.get("graded", true)),
+		})
+
+
+func _read_question_meta(scene: PackedScene) -> Dictionary:
+	var meta := {
+		"quiz_id": "",
+		"slide_id": "",
+		"points": 1.0,
+		"graded": true,
+		"is_quiz": false,
+	}
+	var state := scene.get_state()
+	if state.get_node_count() < 1:
+		return meta
+	for i in state.get_node_property_count(0):
+		var prop_name := state.get_node_property_name(0, i)
+		var prop_value: Variant = state.get_node_property_value(0, i)
+		match prop_name:
+			"script":
+				if prop_value is Script:
+					var path := (prop_value as Script).resource_path
+					if path.ends_with("/id_quiz.gd") or path.ends_with("/id_quiz_mc.gd"):
+						meta["is_quiz"] = true
+			"quiz_id":
+				meta["quiz_id"] = str(prop_value)
+			"slide_id":
+				meta["slide_id"] = str(prop_value)
+			"points":
+				meta["points"] = float(prop_value)
+			"graded":
+				meta["graded"] = bool(prop_value)
+	if not bool(meta["is_quiz"]):
+		meta["quiz_id"] = ""
+	return meta
+
+
+func _init_quiz_results() -> void:
+	if course != null:
+		for quiz_data in course.quizzes:
+			if quiz_data != null and not quiz_data.quiz_id.is_empty():
+				_ensure_quiz_result(quiz_data.quiz_id)
+	for quiz_id in _quiz_members.keys():
+		_ensure_quiz_result(str(quiz_id))
+
+
+func _ensure_quiz_result(quiz_id: String) -> IDQuizResult:
+	if _quiz_results.has(quiz_id):
+		return _quiz_results[quiz_id]
+	var result := IDQuizResult.new()
+	result.quiz_id = quiz_id
+	_quiz_results[quiz_id] = result
+	_refresh_quiz_result(result)
+	return result
+
+
+func _refresh_quiz_result(result: IDQuizResult) -> void:
+	if result == null:
+		return
+	result.score_max = _quiz_score_max(result.quiz_id)
+	result.score_raw = 0.0
+	for record in result.interactions:
+		if record != null and record.result == IDEnums.InteractionResult.CORRECT:
+			result.score_raw += record.weighting
+	if result.score_max <= 0.0:
+		result.percent = 0.0
+	else:
+		result.percent = (result.score_raw / result.score_max) * 100.0
+	result.complete = _quiz_members_complete(result.quiz_id)
+	var passing := 80.0
+	if course != null:
+		var data := course.get_quiz(result.quiz_id)
+		if data != null:
+			passing = data.passing_percent
+	if result.score_max <= 0.0:
+		result.passed = result.complete
+	else:
+		result.passed = result.complete and result.percent + 0.0001 >= passing
+
+
+func _quiz_score_max(quiz_id: String) -> float:
+	var total := 0.0
+	if not _quiz_members.has(quiz_id):
+		return total
+	for member in _quiz_members[quiz_id]:
+		if bool(member.get("graded", true)):
+			total += float(member.get("points", 0.0))
+	return total
+
+
+func _quiz_members_complete(quiz_id: String) -> bool:
+	if not _quiz_members.has(quiz_id):
+		return false
+	var members: Array = _quiz_members[quiz_id]
+	if members.is_empty():
+		return false
+	var graded_count := 0
+	for member in members:
+		if not bool(member.get("graded", true)):
+			continue
+		graded_count += 1
+		var member_id := str(member.get("slide_id", ""))
+		if member_id.is_empty() or not _interactions.has(member_id):
+			return false
+	if graded_count > 0:
+		return true
+	for member in members:
+		var member_id := str(member.get("slide_id", ""))
+		if member_id.is_empty() or not _interactions.has(member_id):
+			return false
+	return true
