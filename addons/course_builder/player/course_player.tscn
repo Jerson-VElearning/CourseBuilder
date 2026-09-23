@@ -1,0 +1,309 @@
+[gd_scene load_steps=11 format=3 uid="uid://cojcwpfbkq2qe"]
+
+[ext_resource type="Script" uid="uid://dxtyyi5wp2mxl" path="res://addons/course_builder/player/course_player.gd" id="1_player"]
+[ext_resource type="Script" uid="uid://xjy6pfstodrw" path="res://addons/course_builder/player/player_chrome.gd" id="2_chrome"]
+[ext_resource type="Script" path="res://addons/course_builder/player/player_menu.gd" id="3_menu"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_chrome"]
+bg_color = Color(0.05490196, 0.15686275, 0.25490198, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn"]
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+bg_color = Color(0.9137255, 0.44313726, 0.19607843, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_disabled"]
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+bg_color = Color(0.9137255, 0.44313726, 0.19607843, 0.35)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_slide"]
+content_margin_left = 12.0
+content_margin_top = 8.0
+content_margin_right = 12.0
+content_margin_bottom = 8.0
+bg_color = Color(1, 1, 1, 0.08)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_current"]
+content_margin_left = 12.0
+content_margin_top = 8.0
+content_margin_right = 12.0
+content_margin_bottom = 8.0
+bg_color = Color(0.9137255, 0.44313726, 0.19607843, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_disabled"]
+content_margin_left = 12.0
+content_margin_top = 8.0
+content_margin_right = 12.0
+content_margin_bottom = 8.0
+bg_color = Color(0, 0, 0, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_panel"]
+bg_color = Color(0.05490196, 0.15686275, 0.25490198, 1)
+content_margin_left = 16.0
+content_margin_top = 16.0
+content_margin_right = 16.0
+content_margin_bottom = 16.0
+
+[node name="CoursePlayer" type="Control" node_paths=PackedStringArray("stage", "complete_overlay", "stage_placeholder", "chrome", "menu")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_player")
+stage = NodePath("Stage")
+complete_overlay = NodePath("CompleteOverlay")
+stage_placeholder = NodePath("Stage/PlaceholderLabel")
+chrome = NodePath("Chrome")
+menu = NodePath("MenuOverlay")
+
+[node name="Stage" type="Control" parent="."]
+clip_contents = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = -72.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Placeholder" type="ColorRect" parent="Stage"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.08235294, 0.1882353, 0.2901961, 1)
+
+[node name="PlaceholderLabel" type="Label" parent="Stage"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.9098039, 0.9098039, 0.9098039, 1)
+theme_override_font_sizes/font_size = 32
+text = "Slide area"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="MenuOverlay" type="Control" parent="." node_paths=PackedStringArray("toggle_button", "backdrop", "close_button", "list_container", "heading_template", "slide_template", "current_template", "disabled_template")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = -72.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("3_menu")
+toggle_button = NodePath("../Chrome/Bar/Menu")
+backdrop = NodePath("Backdrop")
+close_button = NodePath("Panel/VBox/Header/Close")
+list_container = NodePath("Panel/VBox/Scroll/List")
+heading_template = NodePath("Panel/VBox/Scroll/List/HeadingTemplate")
+slide_template = NodePath("Panel/VBox/Scroll/List/SlideTemplate")
+current_template = NodePath("Panel/VBox/Scroll/List/CurrentTemplate")
+disabled_template = NodePath("Panel/VBox/Scroll/List/DisabledTemplate")
+
+[node name="Backdrop" type="ColorRect" parent="MenuOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05490196, 0.15686275, 0.25490198, 0.55)
+
+[node name="Panel" type="PanelContainer" parent="MenuOverlay"]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 360.0
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_menu_panel")
+
+[node name="VBox" type="VBoxContainer" parent="MenuOverlay/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="MenuOverlay/Panel/VBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="MenuOverlay/Panel/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 22
+text = "Menu"
+
+[node name="Close" type="Button" parent="MenuOverlay/Panel/VBox/Header"]
+custom_minimum_size = Vector2(96, 40)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn")
+text = "Close"
+
+[node name="Scroll" type="ScrollContainer" parent="MenuOverlay/Panel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="List" type="VBoxContainer" parent="MenuOverlay/Panel/VBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="HeadingTemplate" type="Label" parent="MenuOverlay/Panel/VBox/Scroll/List"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.2901961, 0.7058824, 0.9137255, 1)
+theme_override_font_sizes/font_size = 18
+text = "Section title"
+autowrap_mode = 3
+
+[node name="SlideTemplate" type="Button" parent="MenuOverlay/Panel/VBox/Scroll/List"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_menu_slide")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_menu_slide")
+theme_override_styles/hover = SubResource("StyleBoxFlat_menu_slide")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_menu_slide")
+text = "Slide"
+alignment = 0
+
+[node name="CurrentTemplate" type="Button" parent="MenuOverlay/Panel/VBox/Scroll/List"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_menu_current")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_menu_current")
+theme_override_styles/hover = SubResource("StyleBoxFlat_menu_current")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_menu_current")
+text = "Current slide"
+alignment = 0
+
+[node name="DisabledTemplate" type="Button" parent="MenuOverlay/Panel/VBox/Scroll/List"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+disabled = true
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0.45)
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_menu_disabled")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_menu_disabled")
+theme_override_styles/hover = SubResource("StyleBoxFlat_menu_disabled")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_menu_disabled")
+text = "Locked slide"
+alignment = 0
+
+[node name="Chrome" type="PanelContainer" parent="." node_paths=PackedStringArray("previous_button", "next_button", "progress_label")]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -72.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_chrome")
+script = ExtResource("2_chrome")
+previous_button = NodePath("Bar/Previous")
+next_button = NodePath("Bar/Next")
+progress_label = NodePath("Bar/Progress")
+
+[node name="Bar" type="HBoxContainer" parent="Chrome"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="PadLeft" type="Control" parent="Chrome/Bar"]
+custom_minimum_size = Vector2(24, 0)
+layout_mode = 2
+
+[node name="Menu" type="Button" parent="Chrome/Bar"]
+custom_minimum_size = Vector2(120, 48)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0.6)
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
+text = "Menu"
+
+[node name="Progress" type="Label" parent="Chrome/Bar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 22
+text = "1 / 3"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Previous" type="Button" parent="Chrome/Bar"]
+custom_minimum_size = Vector2(160, 48)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0.6)
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
+text = "Previous"
+
+[node name="Next" type="Button" parent="Chrome/Bar"]
+custom_minimum_size = Vector2(160, 48)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0.6)
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
+text = "Next"
+
+[node name="PadRight" type="Control" parent="Chrome/Bar"]
+custom_minimum_size = Vector2(24, 0)
+layout_mode = 2
+
+[node name="CompleteOverlay" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05490196, 0.15686275, 0.25490198, 0.88)
+
+[node name="CompleteLabel" type="Label" parent="CompleteOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 48
+text = "Course complete"
+horizontal_alignment = 1
+vertical_alignment = 1
