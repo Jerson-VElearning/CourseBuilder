@@ -1,6 +1,6 @@
 # CourseBuilder
 
-Godot 4.5 plugin for instructional-design courses. One Godot project is one course: you author slides as scenes, arrange them in the **Course Viewer**, and play them in a prebuilt player with Next/Previous, a table of contents, completion rules, and quizzes.
+Godot 4.5 plugin for instructional-design courses. One Godot project is one course: you author slides as scenes, arrange them in the **Course Viewer**, and play them in a prebuilt player with Next/Previous, a table of contents, completion rules, and quizzes. When the course is ready, Course Viewer wraps a Godot Web export into a SCORM 1.2 zip for your LMS.
 
 Clone this repository and open `project.godot` in Godot 4.5 to inspect the plugin. Play will not show a course until you add slides (see [Create a course](#create-a-course)).
 
@@ -26,7 +26,7 @@ Course content lives **outside** the addon folder.
 
 | Path | Role |
 |------|------|
-| `res://course/course.tres` | `IDCourseData` resource: slide order, sections, quizzes, menu navigation |
+| `res://course/course.tres` | `IDCourseData` resource: slide order, sections, quizzes, menu navigation, LMS settings |
 | `res://slides/` | One `.tscn` per slide; root node type **IDSlide** (or **IDQuiz_MC** for questions) |
 | `res://main.tscn` | Inherited scene of the prebuilt player, with the course assigned |
 
@@ -36,9 +36,9 @@ Create `res://course/course.tres` as an `IDCourseData` resource (or use **Add sl
 
 On `course.tres`, **Menu Navigation** controls how learners jump from the player menu:
 
-- **Sequential** (default) — only completed-and-reachable slides (and the next locked one, depending on mode) are open from the menu
+- **Sequential** (default) — a menu item opens once every slide before it is complete
 - **Free** — any slide listed in the menu
-- **Restricted** — only slides the runtime has marked reachable
+- **Restricted** — only slides the learner has already visited
 
 **Completion By** chooses when the course may finish: required slides, quiz success, or both.
 
@@ -47,11 +47,13 @@ On `course.tres`, **Menu Navigation** controls how learners jump from the player
 Add a scene under `res://slides/` with an **IDSlide** root (use **IDQuiz_MC** for a question — see [Quizzes](#quizzes)). Set:
 
 - **Title** — shown in the Course Viewer and player menu
-- **Slide Id** — unique id used by `go_to()` and `IDButton.navigate_to` (for example `title`, `hazards`)
+- **Slide Id** — unique id used by `go_to()`, `IDButton.navigate_to`, and the LMS bookmark (for example `title`, `hazards`). Letters, digits, `_`, `-`, and `.` only.
 - **Completion Rule** — when Next unlocks (see [IDSlide](#idslide))
 - **Show in Menu** — uncheck to hide the slide from the TOC; Next/Previous still visit it
 
 Add the scene to the course from the Course Viewer (**Add slide**) or by appending it on `course.tres`.
+
+The slide root is the source of truth for **Slide Id**; the **Slides** row on `course.tres` keeps a copy. If you change the id later, save the scene, then on that course row click **Refresh from scene**.
 
 ### 3. Main scene / player
 
@@ -74,6 +76,8 @@ Bottom panel **Course Viewer** (next to Output / Debugger). Each slide is a grap
 - **Teal wires** are `IDButton.navigate_to` jumps scanned from each slide scene; they route around other nodes so skipped slides do not hide the line. Dragging a new wire in the graph does **not** change navigation.
 - **Add slide** appends a `.tscn` to `course.tres`.
 - **Add section** creates a named group (GraphFrame). Drag a slide onto a frame to assign it; **Ungroup** on the slide node removes it from the section. Section **×** removes the section and ungroups its slides (scenes stay).
+
+- The second toolbar is the **LMS** row: preset, summary, **Validate**, and **Publish SCORM**. See [LMS and SCORM](#lms-and-scorm).
 
 The player **Menu** lists sections as headings with slides underneath; ungrouped slides stay in course order.
 
@@ -117,7 +121,7 @@ On the slide, add an AnimationPlayer and an AudioStreamPlayer. Put narration on 
 
 How to author a multiple-choice or multiple-response slide. Completion Rule is always **Quiz** on these roots, so Next stays locked until the learner submits.
 
-1. **Optional: add the quiz on the course.** Select `res://course/course.tres`. Under **Quizzes**, add a row: **Quiz Id** (e.g. `final`), **Title**, **Passing Percent**, **Report To Lms**, **Required To Pass**. Skip this step for an unscored knowledge check. A future SCORM plugin should read these fields; this addon does not package LMS files.
+1. **Optional: add the quiz on the course.** Select `res://course/course.tres`. Under **Quizzes**, add a row: **Quiz Id** (e.g. `final`), **Title**, **Passing Percent**, **Report To Lms**, **Required To Pass**. Skip this step for an unscored knowledge check. The **Graded exam** and **Knowledge checks** LMS presets set these flags for you (see [LMS and SCORM](#lms-and-scorm)).
 
 2. **New scene.** Scene → New Scene → **IDQuiz_MC** as the root (Create New Node). Save under `res://slides/`. If **IDQuiz_MC** is missing from the node list, disable and re-enable **CourseBuilder**.
 
@@ -135,7 +139,20 @@ How to author a multiple-choice or multiple-response slide. Completion Rule is a
 
 9. **Play.** Run `main.tscn` and open the slide. Submit stays disabled until a choice is selected. Next stays locked until Submit finishes. Yellow warnings on the **IDQuiz_MC** root mean Submit is missing or the number of **Is Correct** checks does not match **Quiz Type**.
 
-Multiple response is exact-match (no partial credit). Drag-and-drop and fill-in types are not in this version. `IDCourseRuntime.get_quiz_result("final")` and `get_interaction(slide_id)` store score and the SCORM-shaped response for a later results scene. `course_completed` emits a 0–100 score from quizzes with **Report To Lms**.
+Multiple response is exact-match (no partial credit). Drag-and-drop and fill-in types are not in this version. `IDCourseRuntime.get_quiz_result("final")` and `get_interaction(slide_id)` store score and the SCORM-shaped response for a later results scene. `course_completed` emits a 0–100 score from quizzes with **Report To Lms**. There is no built-in results slide; see **Showing results** in [addons/course_builder/README.md](addons/course_builder/README.md) for a Label example.
+
+## LMS and SCORM
+
+CourseBuilder tracks completion, score, bookmark, and quiz answers, and can package the course as a **SCORM 1.2** zip. You pick a preset; you do not type SCORM field names. Full walkthrough: [addons/course_builder/LMS.md](addons/course_builder/LMS.md).
+
+1. **Preset.** In the Course Viewer **LMS** row, pick **Off**, **Awareness** (finish on required slides), **Graded exam** (required slides and a passed quiz, score reported), **Knowledge checks** (answers recorded, no score), or **Custom** (edit **Completion By** and **Quizzes** yourself). Awareness, Graded exam, and Knowledge checks rewrite **Completion By** and each quiz's **Report To Lms**.
+2. **Title and identifier.** On `course.tres` → **Lms**, set **Course Title** and **Identifier** (letters, digits, `_`, `-`, `.`; also the default zip name). **Resume** bookmarks the current slide; **Report Interactions** sends each graded answer.
+3. **Validate.** Checks Slide, Quiz, and Choice ids. The full list prints to Output.
+4. **Test in Play.** With a preset other than Off, Output prints what would be sent, prefixed `[CourseBuilder LMS]`. Editor Play never contacts an LMS.
+5. **Export Web.** Project → Export → **Web** into an empty folder that contains `index.html`. Opened in a plain browser, a mock `window.API` logs to the browser console.
+6. **Publish SCORM.** Course Viewer → **Publish SCORM** → choose that same folder → save the zip → upload it to your LMS.
+
+Publish SCORM only runs when you click it (never on save, Play, or export), and is disabled when the preset is **Off**. The package is one SCO that launches `index.html`; quizzes with **Report To Lms** add `adlcp:masteryScore` from **Passing Percent**. SCORM 2004 and xAPI are not supported yet.
 
 ## Runtime API
 
